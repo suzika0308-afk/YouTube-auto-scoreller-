@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Auto Scroller</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #000; color: #fff; }
+    .container { padding: 20px; }
+    textarea { width: 100%; height: 200px; }
+    button { padding: 10px 20px; margin-top: 10px; font-size: 16px; cursor: pointer; }
+    .grid { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
+      gap: 10px; 
+      margin-top: 20px; 
+    }
+    iframe { width: 100%; height: 180px; border: none; border-radius: 8px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+  <div id="page1" class="container">
+    <h2>Paste Your YouTube Links (Videos + Shorts)</h2>
+    <p>Har line me ek YouTube ya Shorts link daalo:</p>
+    <textarea id="videoLinks"></textarea>
+    <br>
+    <button onclick="startPlayer()">Start Playing</button>
+  </div>
+
+  <div id="page2" class="container hidden">
+    <h2>YouTube Auto Scroll Player</h2>
+    <div id="videoGrid" class="grid"></div>
+    <p id="endMsg" style="display:none; text-align:center; margin-top:20px;">✓ All videos loaded</p>
+  </div>
+
+  <script>
+    let links = [];
+    let currentIndex = 0;
+    const BATCH_SIZE = 10;
+    let loading = false;
+
+    function startPlayer() {
+      const raw = document.getElementById("videoLinks").value.trim().split(/\n+/);
+      links = raw.filter(l => l.length > 0);
+      if (links.length === 0) {
+        alert("Please paste at least one YouTube or Shorts link!");
+        return;
+      }
+      document.getElementById("page1").classList.add("hidden");
+      document.getElementById("page2").classList.remove("hidden");
+      currentIndex = 0;
+      loadNextBatch();
+      window.addEventListener("scroll", handleScroll);
+    }
+
+    function extractID(url) {
+      try {
+        let u = new URL(url);
+        if (u.hostname.includes("youtu.be")) return u.pathname.slice(1);
+        if (u.pathname.includes("/shorts/")) return u.pathname.split("/shorts/")[1].split("?")[0];
+        if (u.searchParams.get("v")) return u.searchParams.get("v");
+        return null;
+      } catch {
+        return url;
+      }
+    }
+
+    function loadNextBatch() {
+      if (loading || currentIndex >= links.length) return;
+      loading = true;
+      const grid = document.getElementById("videoGrid");
+      const slice = links.slice(currentIndex, currentIndex + BATCH_SIZE);
+
+      slice.forEach(link => {
+        const id = extractID(link);
+        if (id) {
+          let iframe = document.createElement("iframe");
+          iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&mute=1`;
+          iframe.allow = "autoplay; encrypted-media";
+          iframe.allowFullscreen = true;
+          grid.appendChild(iframe);
+        }
+      });
+
+      currentIndex += BATCH_SIZE;
+      loading = false;
+
+      if (currentIndex >= links.length) {
+        document.getElementById("endMsg").style.display = "block";
+        window.removeEventListener("scroll", handleScroll);
+      }
+    }
+
+    function handleScroll() {
+      if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 200) {
+        loadNextBatch();
+      }
+    }
+  </script>
+
+</body>
+</html>
